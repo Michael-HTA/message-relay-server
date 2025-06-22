@@ -1,0 +1,54 @@
+version: '3.8'
+
+services:
+  # Service for your PHP application running with Swoole
+  php-swoole-app:
+    build:
+      context: . # Build context is the current directory (where docker-compose.yml and Dockerfile are)
+      dockerfile: Dockerfile # Specifies the Dockerfile to use for building this service's image
+    ports:
+      # Map host port 9501 to container port 9501
+      # Your Swoole server inside the container must listen on port 9501
+      - "9502:9502"
+    volumes:
+      # Mount your local 'src' directory into the container's '/app' directory.
+      # This allows you to edit your code on your host machine and changes reflect in the container.
+      - ./src:/app
+    environment:
+      # Environment variables that your PHP application can use to connect to PostgreSQL
+      # DB_HOST uses the service name 'postgres_db' which Docker Compose resolves to the container's IP
+      DB_CONNECTION: pgsql
+      DB_HOST: postgres_db
+      DB_PORT: 5432
+      DB_DATABASE: postgres
+      DB_USERNAME: postgres
+      DB_PASSWORD: root
+    depends_on:
+      # Ensures that the 'postgres_db' service starts before 'php-swoole-app'
+      - postgres_db
+    networks:
+      # Connects this service to a custom network for internal communication
+      - app_network
+
+  # Service for the PostgreSQL database
+  postgres_db:
+    image: postgres:15-alpine # Using a specific version and Alpine for a smaller image
+    environment:
+      POSTGRES_DB: postgres    # Sets the default database name
+      POSTGRES_USER: postgres  # Sets the database username
+      POSTGRES_PASSWORD: root  # Sets the database password
+    volumes:
+      # Persistent volume for PostgreSQL data. This ensures your data isn't lost if the container is removed.
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      # Connects this service to the same custom network
+      - app_network
+
+# Define named volumes for persistent data storage
+volumes:
+  postgres_data:
+
+# Define a custom bridge network for internal communication between services
+networks:
+  app_network:
+    driver: bridge
